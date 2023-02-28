@@ -14,10 +14,21 @@ struct State {
     vector<ll> contests;
     vector<ll> scores;
     State() : scores(N, -1e9) {
-        vector<ll> _contests(D);
-        rep(i, D) _contests[i] = rand()%N;
-        contests = _contests;
+        contests_init();
         calculate_score();
+    }
+
+    void contests_init() {
+        contests.resize(D);
+        rep(d, D) {
+            ll MAX = -1;
+            rep(i, N) {
+                if(MAX < S[d][i]) {
+                    contests[d] = i;
+                    MAX = S[d][i];
+                }
+            }
+        }
     }
 
     ll get_diff_score(ll x_idx) { // O(10**3)
