@@ -19,7 +19,8 @@ ld limit = 1.9;
 struct State {
     vector<ll> contests;
     vector<ll> scores;
-    State() : scores(N, -1e9) {
+    vector<set<ll>> contest_day;
+    State() : scores(N, -1e9), contest_day(N) {
         contests_init();
         calculate_score();
     }
@@ -38,6 +39,7 @@ struct State {
                 }
             }
             contests[contests.size() - 1] = idx;
+            contest_day[idx].insert(contests.size() - 1);
         }
     }
 
@@ -65,13 +67,12 @@ struct State {
     ll get_diff_score(ll x_idx) { // O(10**3)
         ll last = -1;
         ll score = 0;
-        rep(d, D) {
-            if(contests[d] == x_idx) {
-                score += S[d][contests[d]];
-                last = d;
-            }
-            score -= C[x_idx] * (d - last);
+        for(auto c: contest_day[x_idx]) {
+            score += S[c][x_idx];
+            score -= (c - last - 1) * (c - last) / 2 * C[x_idx];
+            last = c;
         }
+        score -= (D - 1 - last) * (D - last) / 2 * C[x_idx];
         return score;
     }
 
@@ -94,6 +95,11 @@ struct State {
         ll old_score_idx2 = scores[x_idx2];
         ll old_score = old_score_idx1 + old_score_idx2;
         swap(contests[y_idx1], contests[y_idx2]);
+        contest_day[x_idx1].erase(y_idx1);
+        contest_day[x_idx1].insert(y_idx2);
+        contest_day[x_idx2].erase(y_idx2);
+        contest_day[x_idx2].insert(y_idx1);
+
         ll new_score_idx1 = get_diff_score(x_idx1);
         ll new_score_idx2 = get_diff_score(x_idx2);
         ll new_score = new_score_idx1 + new_score_idx2;
@@ -109,6 +115,10 @@ struct State {
                 return true;
             }else {
                 swap(contests[y_idx1], contests[y_idx2]);
+                contest_day[x_idx1].erase(y_idx2);
+                contest_day[x_idx1].insert(y_idx1);
+                contest_day[x_idx2].erase(y_idx1);
+                contest_day[x_idx2].insert(y_idx2);
                 return false;
             }
         }
@@ -122,6 +132,8 @@ struct State {
         ll old_score_idx2 = scores[x_idx2];
         ll old_score = old_score_idx1 + old_score_idx2;
         contests[y_idx] = x_idx2;
+        contest_day[x_idx1].erase(y_idx);
+        contest_day[x_idx2].insert(y_idx);
         ll new_score_idx1 = get_diff_score(x_idx1);
         ll new_score_idx2 = get_diff_score(x_idx2);
         ll new_score = new_score_idx1 + new_score_idx2;
@@ -137,6 +149,8 @@ struct State {
                 return true;
             }else {
                 contests[y_idx] = x_idx1;
+                contest_day[x_idx2].erase(y_idx);
+                contest_day[x_idx1].insert(y_idx);
                 return false;
             }
         }
@@ -150,11 +164,13 @@ int main() {
     rep(i, N) cin >> C[i];
     rep(i, D) rep(j, N) cin >> S[i][j];
     State state = State();
+    ll cnt = 0;
     while(true) {
         clock_t end = clock();
         ld time = (ld)(end - start) / CLOCKS_PER_SEC;
         ld temp = start_temp + (end_temp - start_temp) * (ld)time / limit;
         if(time > limit) break;
+        cnt++;
         if(rand()%100 < 50) {
             ll idx = rand()%D;
             ll value = rand()%N;
