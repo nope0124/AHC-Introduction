@@ -4,11 +4,17 @@ using namespace std;
 typedef long long int ll;
 typedef long double ld;
 #define rep(i, N) for(ll i = 0; i < (ll)N; i++)
+#define ALL(v) (v).begin(), (v).end()
 
 const ll D = 365;
 const ll N = 26;
 vector<ll> C(N);
 vector<vector<ll>> S(D, vector<ll>(N));
+ld start_temp = 2000;
+ld end_temp = 600;
+ld limit = 1.9;
+
+
 
 struct State {
     vector<ll> contests;
@@ -19,16 +25,41 @@ struct State {
     }
 
     void contests_init() {
-        contests.resize(D);
         rep(d, D) {
-            ll MAX = -1;
+            contests.push_back(-1);
+            ll old_score = -1e9;
+            ll idx = -1;
             rep(i, N) {
-                if(MAX < S[d][i]) {
-                    contests[d] = i;
-                    MAX = S[d][i];
+                contests[contests.size() - 1] = i;
+                ll new_score = compute_score(contests);
+                if(old_score < new_score) {
+                    idx = i;
+                    old_score = new_score;
                 }
             }
+            contests[contests.size() - 1] = idx;
         }
+    }
+
+    ll compute_score(vector<ll> _contests) {
+        ll score = 0;
+        vector<ll> last(N, -1);
+        ll k = 5;
+        rep(d, _contests.size()) {
+            rep(i, N) {
+                if(_contests[d] == i) {
+                    score += S[d][_contests[d]];
+                    last[i] = d;
+                }
+                score -= C[i] * (d - last[i]);
+            }
+        }
+        for(ll d = _contests.size(); d < _contests.size() + k; d++) {
+            rep(i, N) {
+                score -= C[i] * (d - last[i]);
+            }
+        }
+        return score;
     }
 
     ll get_diff_score(ll x_idx) { // O(10**3)
@@ -49,14 +80,13 @@ struct State {
         return;
     }
 
-
     ll get_score() {
         ll res = 0;
         rep(i, N) res += scores[i];
         return res;
     }
 
-    bool contests_swap(ll y_idx1, ll y_idx2) {
+    bool contests_swap(ll y_idx1, ll y_idx2, ld temp) {
         if(y_idx1 == y_idx2) return false;
         ll x_idx1 = contests[y_idx1];
         ll x_idx2 = contests[y_idx2];
@@ -72,11 +102,19 @@ struct State {
             scores[x_idx2] = new_score_idx2;
             return true;
         }else {
-            swap(contests[y_idx1], contests[y_idx2]);
-            return false;
+            ll prob = exp((ld)(new_score - old_score) / temp) * 100;
+            if(prob > rand()%100) {
+                scores[x_idx1] = new_score_idx1;
+                scores[x_idx2] = new_score_idx2;
+                return true;
+            }else {
+                swap(contests[y_idx1], contests[y_idx2]);
+                return false;
+            }
         }
     }
-    bool contests_move(ll y_idx, ll x_value) {
+
+    bool contests_move(ll y_idx, ll x_value, ld temp) {
         if(contests[y_idx] == x_value) return false;
         ll x_idx1 = contests[y_idx];
         ll x_idx2 = x_value;
@@ -92,8 +130,15 @@ struct State {
             scores[x_idx2] = new_score_idx2;
             return true;
         }else {
-            contests[y_idx] = x_idx1;
-            return false;
+            ll prob = exp((ld)(new_score - old_score) / temp) * 100;
+            if(prob > rand()%100) {
+                scores[x_idx1] = new_score_idx1;
+                scores[x_idx2] = new_score_idx2;
+                return true;
+            }else {
+                contests[y_idx] = x_idx1;
+                return false;
+            }
         }
     }
 };
@@ -108,10 +153,21 @@ int main() {
     while(true) {
         clock_t end = clock();
         ld time = (ld)(end - start) / CLOCKS_PER_SEC;
-        if(time > 1.0) break;
-        ll idx = rand()%D;
-        ll value = rand()%N;
-        state.contests_move(idx, value);
+        ld temp = start_temp + (end_temp - start_temp) * (ld)time / limit;
+        if(time > limit) break;
+        if(rand()%100 < 50) {
+            ll idx = rand()%D;
+            ll value = rand()%N;
+            state.contests_move(idx, value, temp);
+        }else {
+            ll idx1 = rand()%D;
+            ll idx2 = rand()%D;
+            while(abs(idx1 - idx2) > 13) {
+                idx1 = rand()%D;
+                idx2 = rand()%D;
+            }
+            state.contests_swap(idx1, idx2, temp);
+        }
     }
     cerr << 1000000 + state.get_score() << endl;
     rep(i, D) {
